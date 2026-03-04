@@ -2,40 +2,44 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# App ki basic settings
 st.set_page_config(page_title="Auto Dashboard Generator", layout="wide")
 
 st.title("📊 Google Sheets Auto-Dashboard")
-st.write("Apni Google Sheet ka link niche paste karein aur jadoo dekhein!")
+st.write("Apni Google Sheet ka link niche paste karein. (Note: Sheet ka access 'Anyone with the link' hona chahiye)")
 
-# User se link lena
-sheet_url = st.text_input("Google Sheet (CSV) Link:", placeholder="Yahan link paste karein...")
+# User se normal link lena
+sheet_url = st.text_input("Google Sheet Link Paste Karein:", placeholder="https://docs.google.com/spreadsheets/d/...")
 
 if sheet_url:
     try:
-        # Data ko read karna
-        df = pd.read_csv(sheet_url)
-        st.success("Data successfully load ho gaya!")
+        # MAGIC TRICK: Normal link ko automatically CSV format mein convert karna
+        if "/d/" in sheet_url:
+            # Link se sheet ka ID nikalna
+            sheet_id = sheet_url.split("/d/")[1].split("/")[0]
+            # Naya CSV link banana
+            csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
+        else:
+            csv_url = sheet_url # Agar pehle se CSV link ho
+            
+        # Data load karna
+        df = pd.read_csv(csv_url)
+        st.success("Data successfully load ho gaya! 🎉")
         
-        # Data ka preview dikhana
-        st.subheader("Tumhara Data")
+        st.subheader("Data Preview")
         st.dataframe(df.head())
         
-        # Dashboard ke options (e.g., Dates vs Earnings/Views)
-        st.subheader("Banao Apna Chart")
+        # Dashboard Builder
+        st.subheader("Dashboard Options")
         col1, col2 = st.columns(2)
         
         with col1:
-            x_axis = st.selectbox("X-Axis select karo (e.g., Dates, Names):", df.columns)
+            x_axis = st.selectbox("X-Axis (Bottom Line):", df.columns)
         with col2:
-            y_axis = st.selectbox("Y-Axis select karo (e.g., Earnings, Views):", df.columns)
+            y_axis = st.selectbox("Y-Axis (Left Line):", df.columns)
             
-        # Chart generate karna
         if st.button("Generate Chart"):
-            fig = px.bar(df, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis}", template="plotly_white")
+            fig = px.bar(df, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis}", template="plotly_white", color=x_axis)
             st.plotly_chart(fig, use_container_width=True)
             
     except Exception as e:
-        st.error(f"Error: Link theek nahi hai ya sheet public nahi hai. Pura link check karo.")
-else:
-    st.info("👆 Upar link paste karein tool ko test karne ke liye.")
+        st.error("Error: Data load nahi ho saka. Make sure sheet ka link theek hai aur access 'Anyone with the link' par set hai.")
